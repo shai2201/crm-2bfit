@@ -36,8 +36,9 @@ async function getActiveBooklet(userId: string) {
 export default async function MyBookletPage({
   searchParams,
 }: {
-  searchParams: { day?: string };
+  searchParams: Promise<{ day?: string }>;
 }) {
+  const { day } = await searchParams;
   const booklet = await getActiveBooklet(DEMO_USER_ID);
 
   if (!booklet || booklet.days.length === 0) {
@@ -64,8 +65,8 @@ export default async function MyBookletPage({
     : "המאמן שלך";
 
   // Selected day (default: first day)
-  const selectedDayNumber = searchParams.day
-    ? parseInt(searchParams.day)
+  const selectedDayNumber = day
+    ? parseInt(day)
     : booklet.days[0]?.dayNumber ?? 1;
 
   const selectedDay = booklet.days.find((d) => d.dayNumber === selectedDayNumber)
