@@ -30,9 +30,10 @@ async function getBooklet(id: string) {
 export default async function BookletDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const booklet = await getBooklet(params.id);
+  const { id } = await params;
+  const booklet = await getBooklet(id);
   if (!booklet) notFound();
 
   const traineeName = booklet.trainee.profile

@@ -40,10 +40,11 @@ async function getCustomFields(): Promise<CustomField[]> {
 export default async function ClientDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const { id } = await params;
   const [user, customFields] = await Promise.all([
-    getClient(params.id),
+    getClient(id),
     getCustomFields(),
   ]);
 
