@@ -16,8 +16,9 @@ const LogSchema = z.object({
 // GET /api/exercises/[id]/logs?userId=xxx&limit=50
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
+  const { id } = await params;
   try {
     const sp     = new URL(req.url).searchParams;
     const userId = sp.get("userId");
@@ -25,7 +26,7 @@ export async function GET(
 
     const logs = await prisma.exerciseLog.findMany({
       where: {
-        exerciseId: params.id,
+        exerciseId: id,
         ...(userId && { userId }),
       },
       orderBy: { loggedAt: "desc" },
@@ -45,8 +46,9 @@ export async function GET(
 // POST /api/exercises/[id]/logs
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
+  const { id } = await params;
   try {
     const body   = await req.json();
     const parsed = LogSchema.safeParse(body);
@@ -58,14 +60,14 @@ export async function POST(
     }
 
     // Verify exercise exists
-    const exercise = await prisma.exercise.findUnique({ where: { id: params.id } });
+    const exercise = await prisma.exercise.findUnique({ where: { id } });
     if (!exercise) return NextResponse.json({ error: "תרגיל לא נמצא" }, { status: 404 });
 
     const { userId, loggedAt, ...performance } = parsed.data;
 
     const log = await prisma.exerciseLog.create({
       data: {
-        exerciseId: params.id,
+        exerciseId: id,
         userId,
         ...performance,
         loggedAt: loggedAt ? new Date(loggedAt) : new Date(),
@@ -82,14 +84,15 @@ export async function POST(
 // DELETE /api/exercises/[id]/logs?logId=xxx
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
+  const { id } = await params;
   try {
     const logId = new URL(req.url).searchParams.get("logId");
     if (!logId) return NextResponse.json({ error: "logId נדרש" }, { status: 400 });
 
     await prisma.exerciseLog.delete({
-      where: { id: logId, exerciseId: params.id },
+      where: { id: logId, exerciseId: id },
     });
     return NextResponse.json({ message: "נמחק" });
   } catch (err) {

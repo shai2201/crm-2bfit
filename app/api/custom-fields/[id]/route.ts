@@ -14,8 +14,9 @@ const UpdateFieldSchema = z.object({
 // PUT /api/custom-fields/[id]
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
+  const { id } = await params;
   try {
     const body   = await req.json();
     const parsed = UpdateFieldSchema.safeParse(body);
@@ -28,7 +29,7 @@ export async function PUT(
     }
 
     const field = await prisma.customFieldDefinition.update({
-      where: { id: params.id },
+      where: { id },
       data:  parsed.data,
     });
 
@@ -42,11 +43,12 @@ export async function PUT(
 // DELETE /api/custom-fields/[id]
 export async function DELETE(
   _req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
+  const { id } = await params;
   try {
     // Cascade: CustomFieldValue is deleted via Prisma onDelete: Cascade
-    await prisma.customFieldDefinition.delete({ where: { id: params.id } });
+    await prisma.customFieldDefinition.delete({ where: { id } });
     return NextResponse.json({ message: "נמחק" });
   } catch (err) {
     console.error("[DELETE /api/custom-fields/[id]]", err);

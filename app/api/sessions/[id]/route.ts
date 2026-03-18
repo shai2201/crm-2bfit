@@ -29,11 +29,12 @@ const SESSION_INCLUDE = {
 // GET /api/sessions/[id]
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
+  const { id } = await params;
   try {
     const session = await prisma.session.findUnique({
-      where:   { id: params.id },
+      where:   { id },
       include: SESSION_INCLUDE,
     });
 
@@ -55,8 +56,9 @@ export async function GET(
 // PUT /api/sessions/[id]
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
+  const { id } = await params;
   try {
     const body   = await req.json();
     const parsed = UpdateSessionSchema.safeParse(body);
@@ -71,7 +73,7 @@ export async function PUT(
     const { startTime, endTime, ...rest } = parsed.data;
 
     const session = await prisma.session.update({
-      where: { id: params.id },
+      where: { id },
       data:  {
         ...rest,
         ...(startTime && { startTime: new Date(startTime) }),
@@ -90,15 +92,16 @@ export async function PUT(
 // DELETE /api/sessions/[id]
 export async function DELETE(
   _req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
+  const { id } = await params;
   try {
     // Cancel all active bookings first
     await prisma.booking.updateMany({
-      where: { sessionId: params.id, status: { in: ["CONFIRMED", "WAITLISTED"] } },
+      where: { sessionId: id, status: { in: ["CONFIRMED", "WAITLISTED"] } },
       data:  { status: "CANCELLED", cancelledAt: new Date() },
     });
-    await prisma.session.delete({ where: { id: params.id } });
+    await prisma.session.delete({ where: { id } });
     return NextResponse.json({ message: "נמחק" });
   } catch (err) {
     console.error("[DELETE /api/sessions/[id]]", err);

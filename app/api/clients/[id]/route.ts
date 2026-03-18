@@ -24,11 +24,12 @@ const UpdateClientSchema = z.object({
 // GET /api/clients/[id]
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
+  const { id } = await params;
   try {
     const user = await prisma.user.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         profile:           true,
         healthDeclaration: true,
@@ -53,8 +54,9 @@ export async function GET(
 // PUT /api/clients/[id]
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
+  const { id } = await params;
   try {
     const body   = await req.json();
     const parsed = UpdateClientSchema.safeParse(body);
@@ -95,37 +97,37 @@ export async function PUT(
     const user = await prisma.$transaction(async (tx) => {
       // Update user
       if (Object.keys(userUpdates).length > 0) {
-        await tx.user.update({ where: { id: params.id }, data: userUpdates });
+        await tx.user.update({ where: { id }, data: userUpdates });
       }
       // Upsert profile
       if (Object.keys(profileUpdates).length > 0) {
         await tx.profile.upsert({
-          where:  { userId: params.id },
+          where:  { userId: id },
           update: profileUpdates,
-          create: { userId: params.id, firstName: "", lastName: "", ...profileUpdates },
+          create: { userId: id, firstName: "", lastName: "", ...profileUpdates },
         });
       }
       // Upsert health declaration
       if (Object.keys(healthUpdates).length > 0) {
         await tx.healthDeclaration.upsert({
-          where:  { userId: params.id },
+          where:  { userId: id },
           update: healthUpdates,
-          create: { userId: params.id, ...healthUpdates },
+          create: { userId: id, ...healthUpdates },
         });
       }
       // Custom fields: upsert each value
       if (data.customFields) {
         for (const [fieldDefId, value] of Object.entries(data.customFields)) {
           await tx.customFieldValue.upsert({
-            where:  { fieldDefId_targetId: { fieldDefId, targetId: params.id } },
+            where:  { fieldDefId_targetId: { fieldDefId, targetId: id } },
             update: { value },
-            create: { fieldDefId, targetId: params.id, value, userId: params.id },
+            create: { fieldDefId, targetId: id, value, userId: id },
           });
         }
       }
 
       return tx.user.findUnique({
-        where:   { id: params.id },
+        where:   { id },
         include: { profile: true, healthDeclaration: true },
       });
     });
@@ -140,10 +142,11 @@ export async function PUT(
 // DELETE /api/clients/[id]
 export async function DELETE(
   _req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
+  const { id } = await params;
   try {
-    await prisma.user.delete({ where: { id: params.id } });
+    await prisma.user.delete({ where: { id } });
     return NextResponse.json({ message: "נמחק בהצלחה" });
   } catch (err) {
     console.error("[DELETE /api/clients/[id]]", err);

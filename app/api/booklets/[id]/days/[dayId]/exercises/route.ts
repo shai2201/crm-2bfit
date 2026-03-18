@@ -17,8 +17,9 @@ const ExerciseSchema = z.object({
 // POST /api/booklets/[id]/days/[dayId]/exercises
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string; dayId: string } },
+  { params }: { params: Promise<{ id: string; dayId: string }> },
 ) {
+  const { dayId } = await params;
   try {
     const body   = await req.json();
     const parsed = ExerciseSchema.safeParse(body);
@@ -28,14 +29,14 @@ export async function POST(
 
     // Auto-order: place after the last exercise in this day
     const maxOrder = await prisma.exercise.aggregate({
-      where: { workoutDayId: params.dayId },
+      where: { workoutDayId: dayId },
       _max:  { order: true },
     });
     const nextOrder = (maxOrder._max.order ?? -1) + 1;
 
     const exercise = await prisma.exercise.create({
       data: {
-        workoutDayId: params.dayId,
+        workoutDayId: dayId,
         name:     parsed.data.name,
         sets:     parsed.data.sets ?? null,
         reps:     parsed.data.reps ?? null,
@@ -58,8 +59,9 @@ export async function POST(
 // PUT /api/booklets/[id]/days/[dayId]/exercises?exerciseId=xxx
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string; dayId: string } },
+  { params }: { params: Promise<{ id: string; dayId: string }> },
 ) {
+  const { dayId } = await params;
   try {
     const exerciseId = new URL(req.url).searchParams.get("exerciseId");
     if (!exerciseId) return NextResponse.json({ error: "exerciseId נדרש" }, { status: 400 });
@@ -72,7 +74,7 @@ export async function PUT(
     }
 
     const exercise = await prisma.exercise.update({
-      where: { id: exerciseId, workoutDayId: params.dayId },
+      where: { id: exerciseId, workoutDayId: dayId },
       data:  parsed.data,
     });
 
@@ -86,14 +88,15 @@ export async function PUT(
 // DELETE /api/booklets/[id]/days/[dayId]/exercises?exerciseId=xxx
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string; dayId: string } },
+  { params }: { params: Promise<{ id: string; dayId: string }> },
 ) {
+  const { dayId } = await params;
   try {
     const exerciseId = new URL(req.url).searchParams.get("exerciseId");
     if (!exerciseId) return NextResponse.json({ error: "exerciseId נדרש" }, { status: 400 });
 
     await prisma.exercise.delete({
-      where: { id: exerciseId, workoutDayId: params.dayId },
+      where: { id: exerciseId, workoutDayId: dayId },
     });
     return NextResponse.json({ message: "נמחק" });
   } catch (err) {

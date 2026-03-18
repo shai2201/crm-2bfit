@@ -22,8 +22,9 @@ const ExerciseSchema = z.object({
 // POST /api/booklets/[id]/days  — add a new training day
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
+  const { id } = await params;
   try {
     const body   = await req.json();
     const parsed = DaySchema.safeParse(body);
@@ -33,14 +34,14 @@ export async function POST(
 
     // Find max dayNumber
     const maxDay = await prisma.workoutDay.aggregate({
-      where: { bookletId: params.id },
+      where: { bookletId: id },
       _max:  { dayNumber: true },
     });
     const nextDayNumber = (maxDay._max.dayNumber ?? 0) + 1;
 
     const day = await prisma.workoutDay.create({
       data: {
-        bookletId: params.id,
+        bookletId: id,
         dayNumber: nextDayNumber,
         name:      parsed.data.name ?? `יום ${String.fromCharCode(64 + nextDayNumber)}`,
         notes:     parsed.data.notes,
@@ -58,13 +59,14 @@ export async function POST(
 // DELETE /api/booklets/[id]/days?dayId=xxx
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
+  const { id } = await params;
   try {
     const dayId = new URL(req.url).searchParams.get("dayId");
     if (!dayId) return NextResponse.json({ error: "dayId נדרש" }, { status: 400 });
 
-    await prisma.workoutDay.delete({ where: { id: dayId, bookletId: params.id } });
+    await prisma.workoutDay.delete({ where: { id: dayId, bookletId: id } });
     return NextResponse.json({ message: "נמחק" });
   } catch (err) {
     console.error("[DELETE /api/booklets/[id]/days]", err);

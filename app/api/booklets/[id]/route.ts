@@ -25,11 +25,12 @@ const FULL_BOOKLET_INCLUDE = {
 // GET /api/booklets/[id]
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
+  const { id } = await params;
   try {
     const booklet = await prisma.workoutBooklet.findUnique({
-      where:   { id: params.id },
+      where:   { id },
       include: FULL_BOOKLET_INCLUDE,
     });
     if (!booklet) return NextResponse.json({ error: "לא נמצא" }, { status: 404 });
@@ -43,8 +44,9 @@ export async function GET(
 // PUT /api/booklets/[id]
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
+  const { id } = await params;
   try {
     const body = await req.json();
     const schema = z.object({
@@ -57,7 +59,7 @@ export async function PUT(
       return NextResponse.json({ error: parsed.error.errors[0]?.message }, { status: 400 });
     }
     const booklet = await prisma.workoutBooklet.update({
-      where:   { id: params.id },
+      where:   { id },
       data:    parsed.data,
       include: FULL_BOOKLET_INCLUDE,
     });
@@ -71,10 +73,11 @@ export async function PUT(
 // DELETE /api/booklets/[id]
 export async function DELETE(
   _req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
+  const { id } = await params;
   try {
-    await prisma.workoutBooklet.delete({ where: { id: params.id } });
+    await prisma.workoutBooklet.delete({ where: { id } });
     return NextResponse.json({ message: "נמחק" });
   } catch (err) {
     console.error("[DELETE /api/booklets/[id]]", err);

@@ -14,8 +14,9 @@ const UpdateProductSchema = z.object({
 // PUT /api/products/[id]
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
+  const { id } = await params;
   try {
     const body   = await req.json();
     const parsed = UpdateProductSchema.safeParse(body);
@@ -29,7 +30,7 @@ export async function PUT(
 
     const { price, ...rest } = parsed.data;
     const product = await prisma.product.update({
-      where: { id: params.id },
+      where: { id },
       data:  {
         ...rest,
         ...(price !== undefined && { price: parseFloat(price) }),
@@ -46,10 +47,11 @@ export async function PUT(
 // DELETE /api/products/[id]
 export async function DELETE(
   _req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
+  const { id } = await params;
   try {
-    await prisma.product.delete({ where: { id: params.id } });
+    await prisma.product.delete({ where: { id } });
     return NextResponse.json({ message: "נמחק" });
   } catch (err) {
     console.error("[DELETE /api/products/[id]]", err);

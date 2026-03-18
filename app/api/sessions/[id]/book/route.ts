@@ -10,8 +10,9 @@ const BookSchema = z.object({
 // POST /api/sessions/[id]/book  — register a user for a session
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
+  const { id } = await params;
   try {
     const body   = await req.json();
     const parsed = BookSchema.safeParse(body);
@@ -23,7 +24,7 @@ export async function POST(
       );
     }
 
-    const result = await bookSession(params.id, parsed.data.userId);
+    const result = await bookSession(id, parsed.data.userId);
 
     switch (result.status) {
       case "CONFIRMED":
@@ -74,8 +75,9 @@ export async function POST(
 // DELETE /api/sessions/[id]/book?userId=xxx  — cancel a booking
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
+  const { id } = await params;
   try {
     const userId = new URL(req.url).searchParams.get("userId");
     if (!userId) {
@@ -84,7 +86,7 @@ export async function DELETE(
 
     // Find the booking ID for this user+session
     const booking = await prisma.booking.findUnique({
-      where: { sessionId_userId: { sessionId: params.id, userId } },
+      where: { sessionId_userId: { sessionId: id, userId } },
     });
 
     if (!booking) {
