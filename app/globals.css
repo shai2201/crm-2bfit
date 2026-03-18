@@ -1,0 +1,70 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+:root {
+  --scrollbar-bg:    #0A0A0A;
+  --scrollbar-thumb: #2A2A2A;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: #0A0A0A;
+  color: #FFFFFF;
+  font-family: "Inter", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar       { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--scrollbar-bg); }
+::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #3A3A3A; }
+
+/* Focus ring using brand accent */
+*:focus-visible {
+  outline: 2px solid #00FF87;
+  outline-offset: 2px;
+}
+
+/* Smooth transitions */
+a, button { transition: all 0.15s ease; }
+
+@layer components {
+  /* Accent button base */
+  .btn-accent {
+    @apply bg-brand-accent text-black font-semibold rounded-lg
+           hover:bg-brand-accent-dim active:scale-95
+           shadow-accent-sm hover:shadow-accent-md
+           transition-all duration-150;
+  }
+  /* Ghost button */
+  .btn-ghost {
+    @apply bg-transparent border border-brand-border text-brand-text-muted
+           hover:border-brand-accent hover:text-white rounded-lg
+           transition-all duration-150;
+  }
+  /* Surface card */
+  .card {
+    @apply bg-brand-surface border border-brand-border rounded-xl
+           shadow-surface;
+  }
+  /* Input base */
+  .input-base {
+    @apply bg-brand-elevated border border-brand-border rounded-lg
+           text-white placeholder-brand-text-dim
+           focus:border-brand-accent focus:ring-0
+           transition-colors duration-150 w-full;
+  }
+}

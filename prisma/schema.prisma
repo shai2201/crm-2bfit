@@ -1,0 +1,392 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum Role {
+  ADMIN
+  COACH
+  TRAINEE
+}
+
+enum MembershipStatus {
+  ACTIVE
+  EXPIRED
+  FROZEN
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum SessionStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum BookingStatus {
+  CONFIRMED
+  WAITLISTED
+  CANCELLED
+  ATTENDED
+  NO_SHOW
+}
+
+enum FieldType {
+  TEXT
+  NUMBER
+  DATE
+  BOOLEAN
+  SELECT
+}
+
+enum TargetObject {
+  USER
+  SESSION
+  MEMBERSHIP
+  WORKOUT_BOOKLET
+}
+
+enum ProductType {
+  PERSONAL_TRAINING
+  GROUP_SESSION
+  MEMBERSHIP_PLAN
+  NUTRITION_PLAN
+  OTHER
+}
+
+// ─── Users & Auth ─────────────────────────────────────────────────────────────
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(TRAINEE)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  stripeCustomerId  String?  // Stripe Customer ID
+
+  profile           Profile?
+  healthDeclaration HealthDeclaration?
+  coachProfile      Coach?
+  memberships       Membership[]
+  payments          Payment[]
+  bookings          Booking[]
+  nutritionPlans    NutritionPlan[]
+  customValues      CustomFieldValue[]
+  asTrainee         CoachTrainee[]     @relation("Trainee")
+  booklets          WorkoutBooklet[]   @relation("TraineeBooklets")
+  exerciseLogs      ExerciseLog[]
+}
+
+model Profile {
+  id               String    @id @default(cuid())
+  userId           String    @unique
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  firstName        String
+  lastName         String
+  phone            String?
+  birthDate        DateTime?
+  gender           String?
+  address          String?
+  profileImageUrl  String?
+  emergencyContact String?
+  notes            String?
+}
+
+model HealthDeclaration {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hasConditions     Boolean  @default(false)
+  conditions        String?
+  medications       String?
+  injuries          String?
+  physicianApproval Boolean  @default(false)
+  additionalNotes   String?
+  signedAt          DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+// ─── Custom Fields (Dynamic) ──────────────────────────────────────────────────
+
+model CustomFieldDefinition {
+  id           String       @id @default(cuid())
+  name         String       // internal key: "shirt_size"
+  label        String       // display: "מידת חולצה"
+  fieldType    FieldType
+  options      Json?        // for SELECT: ["S","M","L","XL"]
+  targetObject TargetObject @default(USER)
+  required     Boolean      @default(false)
+  order        Int          @default(0)
+  isActive     Boolean      @default(true)
+  createdAt    DateTime     @default(now())
+
+  values CustomFieldValue[]
+
+  @@unique([name, targetObject])
+}
+
+model CustomFieldValue {
+  id         String                @id @default(cuid())
+  fieldDefId String
+  fieldDef   CustomFieldDefinition @relation(fields: [fieldDefId], references: [id], onDelete: Cascade)
+  targetId   String                // userId / sessionId etc.
+  value      String
+  userId     String?
+  user       User?                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  updatedAt  DateTime              @updatedAt
+
+  @@unique([fieldDefId, targetId])
+}
+
+// ─── Memberships & Payments ───────────────────────────────────────────────────
+
+model MembershipPlan {
+  id               String   @id @default(cuid())
+  name             String
+  description      String?
+  price            Decimal  @db.Decimal(10, 2)
+  durationDays     Int
+  sessionsPerMonth Int?
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+
+  memberships Membership[]
+  products    Product[]
+}
+
+model Membership {
+  id            String           @id @default(cuid())
+  userId        String
+  user          User             @relation(fields: [userId], references: [id])
+  planId        String
+  plan          MembershipPlan   @relation(fields: [planId], references: [id])
+  startDate     DateTime
+  endDate       DateTime
+  status        MembershipStatus @default(ACTIVE)
+  paymentStatus PaymentStatus    @default(PENDING)
+  frozenAt      DateTime?
+  frozenDays    Int              @default(0)
+  notes         String?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  payments Payment[]
+}
+
+model Payment {
+  id            String        @id @default(cuid())
+  membershipId  String?
+  membership    Membership?   @relation(fields: [membershipId], references: [id])
+  userId        String
+  user          User          @relation(fields: [userId], references: [id])
+  amount        Decimal       @db.Decimal(10, 2)
+  currency      String        @default("ILS")
+  method        String?
+  status        PaymentStatus @default(PENDING)
+  transactionId String?
+  notes         String?
+  paidAt        DateTime?
+  createdAt     DateTime      @default(now())
+
+  // Stripe integration
+  stripeSessionId       String?  @unique // Stripe Checkout Session ID
+  stripePaymentIntentId String?
+}
+
+// ─── Coaches ──────────────────────────────────────────────────────────────────
+
+model Coach {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bio             String?
+  specializations String[]
+  certifications  String[]
+
+  sessions CoachTrainee[]
+  trainees CoachTrainee[] @relation("CoachRel")
+  booklets WorkoutBooklet[] @relation("CoachBooklets")
+  Session  Session[]
+}
+
+model CoachTrainee {
+  coachId    String
+  coach      Coach    @relation("CoachRel", fields: [coachId], references: [id])
+  traineeId  String
+  trainee    User     @relation("Trainee", fields: [traineeId], references: [id])
+  assignedAt DateTime @default(now())
+
+  @@id([coachId, traineeId])
+}
+
+// ─── Sessions & Bookings ──────────────────────────────────────────────────────
+
+model Location {
+  id       String    @id @default(cuid())
+  name     String
+  address  String?
+  isActive Boolean   @default(true)
+
+  sessions Session[]
+}
+
+model Session {
+  id          String        @id @default(cuid())
+  coachId     String
+  coach       Coach         @relation(fields: [coachId], references: [id])
+  locationId  String?
+  location    Location?     @relation(fields: [locationId], references: [id])
+  title       String
+  description String?
+  startTime   DateTime
+  endTime     DateTime
+  maxCapacity Int           @default(15)
+  status      SessionStatus @default(SCHEDULED)
+  recurringId String?
+  notes       String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  bookings Booking[]
+}
+
+model Booking {
+  id               String        @id @default(cuid())
+  sessionId        String
+  session          Session       @relation(fields: [sessionId], references: [id])
+  userId           String
+  user             User          @relation(fields: [userId], references: [id])
+  status           BookingStatus @default(CONFIRMED)
+  waitlistPosition Int?
+  bookedAt         DateTime      @default(now())
+  cancelledAt      DateTime?
+  notes            String?
+
+  @@unique([sessionId, userId])
+}
+
+// ─── Workout Booklets ─────────────────────────────────────────────────────────
+
+model WorkoutBooklet {
+  id          String   @id @default(cuid())
+  traineeId   String
+  trainee     User     @relation("TraineeBooklets", fields: [traineeId], references: [id])
+  coachId     String
+  coach       Coach    @relation("CoachBooklets", fields: [coachId], references: [id])
+  title       String
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  days WorkoutDay[]
+}
+
+model WorkoutDay {
+  id        String         @id @default(cuid())
+  bookletId String
+  booklet   WorkoutBooklet @relation(fields: [bookletId], references: [id], onDelete: Cascade)
+  dayNumber Int
+  name      String?
+  notes     String?
+
+  exercises Exercise[]
+
+  @@unique([bookletId, dayNumber])
+}
+
+model Exercise {
+  id           String     @id @default(cuid())
+  workoutDayId String
+  workoutDay   WorkoutDay @relation(fields: [workoutDayId], references: [id], onDelete: Cascade)
+  name         String
+  order        Int        @default(0)
+  sets         Int?
+  reps         String?       // target reps, e.g. "10" or "8-12"
+  weight       String?       // target weight, e.g. "60kg" or "bodyweight"
+  duration     String?
+  restTime     String?
+  videoUrl     String?
+  notes        String?
+
+  logs ExerciseLog[]
+}
+
+// ─── Exercise Performance Log ─────────────────────────────────────────────────
+
+model ExerciseLog {
+  id         String   @id @default(cuid())
+  exerciseId String
+  exercise   Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Actual performance
+  weightKg   Float?   // weight lifted in kg
+  reps       Int?     // actual reps performed
+  sets       Int?     // actual sets completed
+  rpe        Float?   // Rate of Perceived Exertion 1–10
+  duration   String?  // for cardio: "30:45"
+  notes      String?
+
+  loggedAt   DateTime @default(now())
+
+  @@index([exerciseId, loggedAt])   // fast progress queries
+  @@index([userId, loggedAt])       // fast user history queries
+}
+
+// ─── Nutrition AI ─────────────────────────────────────────────────────────────
+
+model NutritionPlan {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  title     String?
+  prompt    String
+  response  Json
+  calories  Int?
+  macros    Json?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  // Full chat history for re-loading conversation
+  messages  Json?    // ChatMessage[] = [{role, content}]
+}
+
+// ─── Products (for pricing/selling) ──────────────────────────────────────────
+
+model Product {
+  id              String      @id @default(cuid())
+  name            String
+  description     String?
+  type            ProductType
+  price           Decimal     @db.Decimal(10, 2)
+  currency        String      @default("ILS")
+  isActive        Boolean     @default(true)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  // Stripe integration
+  stripeProductId String?     // Stripe Product ID
+  stripePriceId   String?     // Stripe Price ID
+
+  // Link to MembershipPlan (for MEMBERSHIP_PLAN type)
+  planId          String?
+  plan            MembershipPlan? @relation(fields: [planId], references: [id])
+}
