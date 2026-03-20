@@ -42,13 +42,19 @@ export default async function BookletDetailPage({
 
   // Serialize for client component
   const initialData = {
-    id:       booklet.id,
-    title:    booklet.title,
-    isActive: booklet.isActive,
+    id:          booklet.id,
+    title:       booklet.title,
+    description: booklet.description ?? null,
+    isActive:    booklet.isActive,
+    trainee:     { profile: booklet.trainee.profile ? {
+      firstName: booklet.trainee.profile.firstName,
+      lastName:  booklet.trainee.profile.lastName,
+    } : null },
     days: booklet.days.map((d) => ({
       id:        d.id,
       dayNumber: d.dayNumber,
       name:      d.name,
+      notes:     d.notes ?? null,
       exercises: d.exercises.map((ex) => ({
         id:       ex.id,
         name:     ex.name,
@@ -58,6 +64,7 @@ export default async function BookletDetailPage({
         restTime: ex.restTime,
         videoUrl: ex.videoUrl,
         notes:    ex.notes,
+        order:    ex.order,
         logs:     ex.logs.map((l) => ({
           id:       l.id,
           weightKg: l.weightKg,

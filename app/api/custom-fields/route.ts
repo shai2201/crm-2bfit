@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
@@ -64,7 +65,7 @@ export async function POST(req: NextRequest) {
         name:         data.name,
         label:        data.label,
         fieldType:    data.fieldType,
-        options:      data.options ?? null,
+        options:      data.options == null ? Prisma.JsonNull : data.options,
         targetObject: data.targetObject,
         required:     data.required,
         order:        data.order,

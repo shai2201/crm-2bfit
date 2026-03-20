@@ -219,7 +219,6 @@ model Coach {
   specializations String[]
   certifications  String[]
 
-  sessions CoachTrainee[]
   trainees CoachTrainee[] @relation("CoachRel")
   booklets WorkoutBooklet[] @relation("CoachBooklets")
   Session  Session[]

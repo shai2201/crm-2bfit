@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
@@ -28,9 +29,13 @@ export async function PUT(
       );
     }
 
+    const { options, ...rest } = parsed.data;
     const field = await prisma.customFieldDefinition.update({
       where: { id },
-      data:  parsed.data,
+      data:  {
+        ...rest,
+        ...(options !== undefined && { options: options === null ? Prisma.JsonNull : options }),
+      },
     });
 
     return NextResponse.json({ data: field });

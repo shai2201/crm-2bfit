@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { prisma } from "@/lib/prisma";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2024-12-18.acacia",
+const getStripe = () => new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: "2025-02-24.acacia",
 });
 
 // Must disable body parsing for Stripe signature verification
@@ -12,6 +12,7 @@ export const config = { api: { bodyParser: false } };
 // POST /api/stripe/webhook
 // Handles Stripe events: checkout.session.completed, payment_intent.payment_failed
 export async function POST(req: NextRequest) {
+  const stripe    = getStripe();
   const payload   = await req.text();
   const signature = req.headers.get("stripe-signature") ?? "";
 

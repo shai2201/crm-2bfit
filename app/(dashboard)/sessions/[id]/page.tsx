@@ -58,7 +58,7 @@ export default async function SessionDetailPage({
     ? `${session.coach.user.profile.firstName} ${session.coach.user.profile.lastName}`
     : "מאמן";
 
-  function userName(booking: (typeof session.bookings)[0]) {
+  function userName(booking: NonNullable<typeof session>["bookings"][0]) {
     const p = booking.user.profile;
     return p ? `${p.firstName} ${p.lastName}` : booking.user.email;
   }

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { BookingStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
@@ -18,13 +19,13 @@ const SESSION_INCLUDE = {
   coach:    { include: { user: { include: { profile: true } } } },
   location: true,
   bookings: {
-    where:   { status: { in: ["CONFIRMED", "WAITLISTED"] as const } },
+    where:   { status: { in: ["CONFIRMED", "WAITLISTED"] as BookingStatus[] } },
     orderBy: [{ status: "asc" as const }, { waitlistPosition: "asc" as const }, { bookedAt: "asc" as const }],
     include: {
       user: { include: { profile: true } },
     },
   },
-} as const;
+};
 
 // GET /api/sessions/[id]
 export async function GET(

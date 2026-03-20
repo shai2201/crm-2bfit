@@ -3,8 +3,8 @@ import Stripe from "stripe";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2024-12-18.acacia",
+const getStripe = () => new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: "2025-02-24.acacia",
 });
 
 const bodySchema = z.object({
@@ -16,6 +16,7 @@ const bodySchema = z.object({
 // Body: { productId, userId }
 // Returns: { url: string } — Stripe Checkout redirect URL
 export async function POST(req: NextRequest) {
+  const stripe = getStripe();
   try {
     const body   = await req.json();
     const parsed = bodySchema.safeParse(body);

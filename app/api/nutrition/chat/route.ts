@@ -3,7 +3,7 @@ import OpenAI from "openai";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const getOpenAI = () => new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 const bodySchema = z.object({
   userId:   z.string(),
@@ -98,6 +98,7 @@ function buildSystemPrompt(profile: {
 // ──────────────────────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
+  const openai = getOpenAI();
   try {
     const body   = await req.json();
     const parsed = bodySchema.safeParse(body);
