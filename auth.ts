@@ -2,6 +2,7 @@ import NextAuth, { type DefaultSession } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
+import { authConfig } from "@/auth.config";
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Extend the built-in session/JWT types
@@ -20,11 +21,11 @@ declare module "next-auth" {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// NextAuth v5 configuration
+// NextAuth v5 configuration (Node.js only — includes Prisma)
 // ──────────────────────────────────────────────────────────────────────────────
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  session: { strategy: "jwt" },
+  ...authConfig,
 
   providers: [
     Credentials({
@@ -60,29 +61,4 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
     }),
   ],
-
-  callbacks: {
-    // Persist id + role in the JWT
-    jwt({ token, user }) {
-      if (user) {
-        token.id   = user.id;
-        token.role = (user as { role: string }).role;
-      }
-      return token;
-    },
-
-    // Expose id + role on the session object
-    session({ session, token }) {
-      if (session.user) {
-        session.user.id   = token.id   as string;
-        session.user.role = token.role as string;
-      }
-      return session;
-    },
-  },
-
-  pages: {
-    signIn: "/login",
-    error:  "/login",
-  },
 });
